@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/icon-192x192.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Financial Vault</title>
     
@@ -28,13 +28,31 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-              console.log('SW registered: ', registration);
-            })
-            .catch((registrationError) => {
-              console.log('SW registration failed: ', registrationError);
-            });
+          // Only register service worker in production or when not on localhost
+          if (window.location.hostname !== 'localhost' || window.location.port !== '3000') {
+            navigator.serviceWorker.register('/sw.js')
+              .then((registration) => {
+                console.log('SW registered: ', registration);
+                
+                // Check for updates
+                registration.addEventListener('updatefound', () => {
+                  const newWorker = registration.installing;
+                  if (newWorker) {
+                    newWorker.addEventListener('statechange', () => {
+                      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        // New content is available, reload the page
+                        window.location.reload();
+                      }
+                    });
+                  }
+                });
+              })
+              .catch((registrationError) => {
+                console.log('SW registration failed: ', registrationError);
+              });
+          } else {
+            console.log('Skipping service worker registration in development');
+          }
         });
       }
     </script>

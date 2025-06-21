@@ -2,6 +2,10 @@
 
 A modern, secure personal finance management application built with React, TypeScript, and Supabase. Features wallet management, transaction tracking, SMS parsing, and AI-powered financial insights.
 
+## 🚀 Live Demo
+
+**🌐 Production URL**: [https://advisorly-nine.vercel.app/](https://advisorly-nine.vercel.app/)
+
 ## 🚀 Features
 
 - **🔐 Secure Authentication** - Google OAuth integration with Supabase
@@ -22,13 +26,14 @@ A modern, secure personal finance management application built with React, TypeS
 - **Mobile**: Capacitor
 - **Icons**: Lucide React
 - **Routing**: React Router DOM
+- **Hosting**: Vercel
 
 ## 📦 Installation
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
-   cd financial-vault
+   git clone https://github.com/notdobby/Advisorly.git
+   cd Advisorly
    ```
 
 2. **Install dependencies**

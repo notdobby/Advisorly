@@ -5,7 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Financial Vault',
   webDir: 'dist',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    url: 'https://advisorly-nine.vercel.app'
   },
   plugins: {
     SMS: {

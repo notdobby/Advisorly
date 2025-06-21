@@ -10,12 +10,16 @@ import SettingsPage from './pages/SettingsPage';
 import MainLayout from './layouts/MainLayout';
 import { useSupabaseAuth } from './hooks/useSupabaseAuth';
 import { supabase } from '../frontend/supabaseClient';
+import { checkAndClearOldCache } from './utils/clearCache';
 
 export function App() {
   const { user, loading } = useSupabaseAuth();
   const [isRegistered, setIsRegistered] = React.useState(false);
 
   React.useEffect(() => {
+    // Check and clear old cache if transitioning from development to production
+    checkAndClearOldCache();
+    
     // Handle authentication callback
     const handleAuthCallback = async () => {
       const { error } = await supabase.auth.getSession();

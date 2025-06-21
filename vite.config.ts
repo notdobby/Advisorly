@@ -10,6 +10,17 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          supabase: ['@supabase/supabase-js']
+        }
+      }
+    }
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version)
   }
 })
