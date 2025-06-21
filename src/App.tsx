@@ -18,7 +18,7 @@ export function App() {
   React.useEffect(() => {
     // Handle authentication callback
     const handleAuthCallback = async () => {
-      const { data, error } = await supabase.auth.getSession();
+      const { error } = await supabase.auth.getSession();
       if (error) {
         console.error('Auth callback error:', error);
       }
