@@ -4,7 +4,9 @@ A modern, secure personal finance management application built with React, TypeS
 
 ## 🚀 Live Demo
 
-**🌐 Production URL**: [https://advisorly-nine.vercel.app/](https://advisorly-nine.vercel.app/)
+**🌐 Production URL**: [https://advisorly-dobbys-projects-22112754.vercel.app/](https://advisorly-dobbys-projects-22112754.vercel.app/)
+
+*Note: Vercel may assign different subdomains for different deployments. The latest URL will be available in your Vercel dashboard.*
 
 ## 🚀 Features
 

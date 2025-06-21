@@ -1,4 +1,4 @@
-const CACHE_NAME = 'financial-vault-v4';
+const CACHE_NAME = 'financial-vault-v6';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -9,43 +9,85 @@ const urlsToCache = [
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {
+  console.log('Service Worker installing...');
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
+      .then((cache) => {
+        console.log('Caching app shell');
+        return cache.addAll(urlsToCache);
+      })
   );
 });
 
 // Fetch event - serve from cache if available
 self.addEventListener('fetch', (event) => {
-  // Skip Vite dev server requests in production
-  if (event.request.url.includes('localhost:3000') || 
-      event.request.url.includes('@vite/client') ||
-      event.request.url.includes('@react-refresh')) {
+  const request = event.request;
+  const url = new URL(request.url);
+  
+  // Skip all localhost requests completely
+  if (url.hostname === 'localhost' || 
+      url.hostname === '127.0.0.1' ||
+      url.pathname.includes('@vite') ||
+      url.pathname.includes('@react-refresh') ||
+      url.pathname.includes('vite.svg')) {
+    console.log('Skipping localhost/dev request:', request.url);
+    return;
+  }
+  
+  // Only handle requests from our domain (any Vercel subdomain)
+  if (!url.hostname.includes('vercel.app') && 
+      url.hostname !== 'localhost' && 
+      url.hostname !== '127.0.0.1') {
+    console.log('Skipping external request:', request.url);
     return;
   }
 
   event.respondWith(
-    caches.match(event.request)
+    caches.match(request)
       .then((response) => {
-        // Return cached version or fetch from network
+        // Return cached version if available
         if (response) {
+          console.log('Serving from cache:', request.url);
           return response;
         }
         
-        return fetch(event.request).catch((error) => {
-          console.log('Fetch failed:', error);
-          // Return a fallback response for navigation requests
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-          return new Response('Network error', { status: 503 });
-        });
+        // Fetch from network
+        return fetch(request)
+          .then((networkResponse) => {
+            // Cache successful responses for static assets
+            if (networkResponse.status === 200 && 
+                (request.destination === 'image' || 
+                 request.destination === 'script' || 
+                 request.destination === 'style')) {
+              const responseToCache = networkResponse.clone();
+              caches.open(CACHE_NAME)
+                .then((cache) => {
+                  cache.put(request, responseToCache);
+                });
+            }
+            return networkResponse;
+          })
+          .catch((error) => {
+            console.log('Fetch failed:', request.url, error);
+            
+            // Return fallback for navigation requests
+            if (request.mode === 'navigate') {
+              return caches.match('/index.html');
+            }
+            
+            // Return error response for other requests
+            return new Response('Network error', { 
+              status: 503,
+              statusText: 'Service Unavailable'
+            });
+          });
       })
   );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
+  console.log('Service Worker activating...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -68,6 +110,6 @@ self.addEventListener('sync', (event) => {
 });
 
 async function syncSMSData() {
-  // This will be implemented when we add SMS functionality
   console.log('Background sync triggered');
+  // This will be implemented when we add SMS functionality
 } 

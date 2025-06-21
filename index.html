@@ -28,11 +28,23 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Only register service worker in production or when not on localhost
-          if (window.location.hostname !== 'localhost' || window.location.port !== '3000') {
+          const isProduction = window.location.hostname.includes('vercel.app');
+          const isLocalhost = window.location.hostname === 'localhost' && 
+                             window.location.port === '3000';
+          
+          console.log('Environment check:', {
+            hostname: window.location.hostname,
+            port: window.location.port,
+            isProduction,
+            isLocalhost
+          });
+          
+          // Only register service worker in production
+          if (isProduction && !isLocalhost) {
+            console.log('Registering service worker in production...');
             navigator.serviceWorker.register('/sw.js')
               .then((registration) => {
-                console.log('SW registered: ', registration);
+                console.log('SW registered successfully:', registration);
                 
                 // Check for updates
                 registration.addEventListener('updatefound', () => {
@@ -40,7 +52,7 @@
                   if (newWorker) {
                     newWorker.addEventListener('statechange', () => {
                       if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        // New content is available, reload the page
+                        console.log('New service worker available, reloading...');
                         window.location.reload();
                       }
                     });
@@ -48,12 +60,26 @@
                 });
               })
               .catch((registrationError) => {
-                console.log('SW registration failed: ', registrationError);
+                console.error('SW registration failed:', registrationError);
               });
           } else {
-            console.log('Skipping service worker registration in development');
+            console.log('Skipping service worker registration:', {
+              reason: isLocalhost ? 'development environment' : 'not production domain'
+            });
+            
+            // Unregister any existing service workers in development
+            if (isLocalhost) {
+              navigator.serviceWorker.getRegistrations().then(registrations => {
+                registrations.forEach(registration => {
+                  registration.unregister();
+                  console.log('Unregistered service worker in development');
+                });
+              });
+            }
           }
         });
+      } else {
+        console.log('Service Worker not supported');
       }
     </script>
   </head>
