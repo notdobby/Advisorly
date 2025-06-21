@@ -137,7 +137,10 @@ const AISuggestionsPage = () => {
                 </div>
                 <p className="text-gray-400 mb-4">{suggestion.description}</p>
                 <div className="mb-4">
-                  <button className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1" onClick={() => {}}>
+                  <button className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1" onClick={() => {
+                    // TODO: Implement show reason functionality
+                    console.log('Show reason for:', suggestion.title);
+                  }}>
                     <span>Show me why</span>
                     <ArrowRightIcon size={14} />
                   </button>

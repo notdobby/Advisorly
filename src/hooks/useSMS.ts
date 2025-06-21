@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../frontend/supabaseClient';
 import { useSupabaseAuth } from './useSupabaseAuth';
 
@@ -26,11 +26,29 @@ export function useSMS() {
   // Simple mobile detection
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
+  const fetchBankTransactions = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('bank_transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('transaction_date', { ascending: false });
+
+      if (!error && data) {
+        setTransactions(data);
+      }
+    } catch (error) {
+      console.error('Fetch transactions error:', error);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       fetchBankTransactions();
     }
-  }, [user]);
+  }, [user, fetchBankTransactions]);
 
   const requestSMSPermission = async () => {
     if (!isMobile) {
@@ -165,24 +183,6 @@ export function useSMS() {
       return 0;
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const fetchBankTransactions = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('bank_transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('transaction_date', { ascending: false });
-
-      if (!error && data) {
-        setTransactions(data);
-      }
-    } catch (error) {
-      console.error('Fetch transactions error:', error);
     }
   };
 

@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { HomeIcon, WalletIcon, BrainCircuitIcon, ClockIcon, SettingsIcon, MenuIcon, XIcon } from 'lucide-react';
 import { supabase } from '../../frontend/supabaseClient';
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
+import type { User } from '@supabase/supabase-js';
 const MainLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const toggleMobileMenu = () => {
@@ -29,7 +30,7 @@ const MainLayout = () => {
     icon: <SettingsIcon size={20} />,
     label: 'Settings'
   }];
-  const { user } = useSupabaseAuth() as { user: any };
+  const { user } = useSupabaseAuth() as { user: User | null };
   const userName =
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||

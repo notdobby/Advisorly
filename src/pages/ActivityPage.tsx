@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCwIcon, SmartphoneIcon, WalletIcon, FilterIcon } from 'lucide-react';
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { useSMS } from '../hooks/useSMS';
@@ -38,13 +38,7 @@ const ActivityPage = () => {
   const [filter, setFilter] = useState<'all' | 'manual' | 'bank'>('all');
   const [lastSync, setLastSync] = useState<Date | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      fetchManualTransactions();
-    }
-  }, [user]);
-
-  const fetchManualTransactions = async () => {
+  const fetchManualTransactions = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -60,7 +54,13 @@ const ActivityPage = () => {
     } catch (error) {
       console.error('Fetch manual transactions error:', error);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchManualTransactions();
+    }
+  }, [user, fetchManualTransactions]);
 
   const handleSync = async () => {
     const count = await syncTransactions();
