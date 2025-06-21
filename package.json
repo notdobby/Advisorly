@@ -28,7 +28,7 @@
   "homepage": "https://github.com/yourusername/financial-vault#readme",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/build.js && node scripts/verify-build.js",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",

@@ -90,7 +90,6 @@ jspm_packages/
 
 # Gatsby files
 .cache/
-public
 
 # Storybook build outputs
 .out
@@ -120,10 +119,6 @@ www/
 # Testing
 coverage/
 .nyc_output/
-
-# PWA files (if generated)
-sw.js
-workbox-*.js
 
 # Backup files
 *.bak

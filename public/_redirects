@@ -1,0 +1,8 @@
+# PWA files
+/manifest.json /manifest.json 200
+/sw.js /sw.js 200
+/icon-192x192.svg /icon-192x192.svg 200
+/icon-512x512.svg /icon-512x512.svg 200
+
+# SPA fallback
+/* /index.html 200 
