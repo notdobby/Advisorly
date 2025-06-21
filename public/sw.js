@@ -1,4 +1,4 @@
-const CACHE_NAME = 'financial-vault-v6';
+const CACHE_NAME = 'financial-vault-v7';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -42,6 +42,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Handle navigation requests (SPA routing)
+  if (request.mode === 'navigate') {
+    console.log('Handling navigation request:', request.url);
+    event.respondWith(
+      caches.match('/index.html')
+        .then((response) => {
+          return response || fetch(request);
+        })
+        .catch(() => {
+          return caches.match('/index.html');
+        })
+    );
+    return;
+  }
+
+  // Handle static assets and API requests
   event.respondWith(
     caches.match(request)
       .then((response) => {
@@ -58,7 +74,8 @@ self.addEventListener('fetch', (event) => {
             if (networkResponse.status === 200 && 
                 (request.destination === 'image' || 
                  request.destination === 'script' || 
-                 request.destination === 'style')) {
+                 request.destination === 'style' ||
+                 request.destination === 'font')) {
               const responseToCache = networkResponse.clone();
               caches.open(CACHE_NAME)
                 .then((cache) => {
@@ -70,16 +87,9 @@ self.addEventListener('fetch', (event) => {
           .catch((error) => {
             console.log('Fetch failed:', request.url, error);
             
-            // Return fallback for navigation requests
-            if (request.mode === 'navigate') {
-              return caches.match('/index.html');
-            }
-            
-            // Return error response for other requests
-            return new Response('Network error', { 
-              status: 503,
-              statusText: 'Service Unavailable'
-            });
+            // Don't return index.html for non-navigation requests
+            // Let the browser handle the error naturally
+            throw error;
           });
       })
   );
