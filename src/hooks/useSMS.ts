@@ -5,12 +5,10 @@ import { Capacitor } from '@capacitor/core';
 
 // Try to import Capacitor SMS reader, fallback for web development
 let SmsReader: any = null;
-let PermissionStatus: any = null;
 
 try {
   const smsModule = require('@solimanware/capacitor-sms-reader');
   SmsReader = smsModule.SmsReader;
-  PermissionStatus = smsModule.PermissionStatus;
 } catch (error) {
   console.log('SMS reader not available in web environment');
 }

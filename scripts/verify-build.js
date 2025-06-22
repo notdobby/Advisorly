@@ -6,8 +6,8 @@ function verifyBuild() {
   const requiredFiles = [
     'manifest.json',
     'sw.js',
-    'icon-192x192.svg',
-    'icon-512x512.svg',
+    'icon-192x192.png',
+    'icon-512x512.png',
     'index.html'
   ];
   

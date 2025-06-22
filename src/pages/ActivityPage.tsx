@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Smartphone, Wallet, Filter, ArrowUpRight, ArrowDownLeft, AlertCircle } from 'lucide-react';
+import { RefreshCw, Smartphone, Wallet, Filter } from 'lucide-react';
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { useSMS } from '../hooks/useSMS';
 import { usePWA } from '../hooks/usePWA';
@@ -36,7 +36,6 @@ const ActivityPage = () => {
     transactions: bankTransactions, 
     isLoading, 
     syncTransactions, 
-    fetchBankTransactions, 
     isMobile,
     testParseSMS 
   } = useSMS();
