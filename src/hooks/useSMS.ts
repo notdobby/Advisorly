@@ -1,6 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../frontend/supabaseClient';
 import { useSupabaseAuth } from './useSupabaseAuth';
+import { Capacitor } from '@capacitor/core';
+
+// Try to import Capacitor SMS reader, fallback for web development
+let SmsReader: any = null;
+let PermissionStatus: any = null;
+
+try {
+  const smsModule = require('@solimanware/capacitor-sms-reader');
+  SmsReader = smsModule.SmsReader;
+  PermissionStatus = smsModule.PermissionStatus;
+} catch (error) {
+  console.log('SMS reader not available in web environment');
+}
 
 interface BankTransaction {
   id: string;
@@ -17,14 +30,24 @@ interface BankTransaction {
   created_at: string;
 }
 
+// Common bank sender IDs in India. This helps in filtering.
+// Note: These are examples and might need to be expanded.
+const BANK_SENDER_IDS = [
+  'HDFCBK', 'ICICIB', 'SBIBNK', 'AXISBK', 'KOTAKB', 
+  // These are often used for UPI transactions from various banks
+  'UPI', 
+  // Add more specific sender IDs like 'VM-HDFCBK', 'BP-ICICIB' etc.
+  'SARASWAT', // Saraswat Bank
+];
+
 export function useSMS() {
   const { user } = useSupabaseAuth();
   const [hasPermission, setHasPermission] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
 
-  // Simple mobile detection
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  // Check if running on a native platform
+  const isNativePlatform = Capacitor.isNativePlatform();
 
   const fetchBankTransactions = useCallback(async () => {
     if (!user) return;
@@ -45,34 +68,62 @@ export function useSMS() {
   }, [user]);
 
   useEffect(() => {
+    const checkInitialPermission = async () => {
+      if (isNativePlatform && SmsReader) {
+        try {
+          const status = await SmsReader.checkPermissions();
+          setHasPermission((status as any).sms === 'granted');
+        } catch (error) {
+          console.log('SMS permission check failed:', error);
+          setHasPermission(false);
+        }
+      }
+    };
+
     if (user) {
       fetchBankTransactions();
+      checkInitialPermission();
     }
-  }, [user, fetchBankTransactions]);
+  }, [user, fetchBankTransactions, isNativePlatform]);
 
-  const requestSMSPermission = async () => {
-    if (!isMobile) {
-      alert('SMS functionality is only available on mobile devices. Please install the app on your phone.');
+  const requestSMSPermission = async (): Promise<boolean> => {
+    if (!isNativePlatform || !SmsReader) {
+      alert('SMS functionality is only available on the native mobile app.');
       return false;
     }
 
     try {
       setIsLoading(true);
-      // For now, simulate permission request
-      // In a real mobile app, this would use the actual SMS plugin
-      setHasPermission(true);
-      return true;
+      const status = await SmsReader.requestPermissions();
+      const permissionGranted = (status as any).sms === 'granted';
+      setHasPermission(permissionGranted);
+      return permissionGranted;
     } catch (error) {
       console.error('SMS permission error:', error);
+      setHasPermission(false);
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const parseBankSMS = (smsText: string): BankTransaction | null => {
+  const parseBankSMS = (smsText: string): Omit<BankTransaction, 'id' | 'user_id' | 'created_at'> | null => {
     // Common Indian bank SMS patterns
     const patterns = [
+      // Saraswat Bank UPI Transaction
+      {
+        bank: 'Saraswat Bank',
+        pattern: /Your a\/c no\. (\w+) is (debited|credited) for Rs\.(\d+(?:,\d+)*(?:\.\d{2})?) on (\d{1,2}-\d{1,2}-\d{4}) (\d{1,2}:\d{1,2}:\d{1,2}) and (?:credited to|debited from) vpa (\S+) \(UPI Ref no (\d+)\) Your Current Balance is INR (\d+(?:,\d+)*(?:\.\d{2})?)/i,
+        extract: (matches: RegExpMatchArray) => ({
+          account: matches[1],
+          type: matches[2].toLowerCase() as 'credit' | 'debit',
+          amount: parseFloat(matches[3].replace(/,/g, '')),
+          date: new Date(matches[4].split('-').reverse().join('-') + 'T' + matches[5]).toISOString(),
+          vpa: matches[6],
+          refNumber: matches[7],
+          balance: parseFloat(matches[8].replace(/,/g, ''))
+        })
+      },
       // HDFC Bank
       {
         bank: 'HDFC Bank',
@@ -81,7 +132,7 @@ export function useSMS() {
           amount: parseFloat(matches[1].replace(/,/g, '')),
           type: matches[2].toLowerCase() as 'credit' | 'debit',
           account: matches[3],
-          date: matches[4]
+          date: new Date(matches[4].split('/').reverse().join('-')).toISOString()
         })
       },
       // SBI Bank
@@ -92,7 +143,7 @@ export function useSMS() {
           amount: parseFloat(matches[1].replace(/,/g, '')),
           type: matches[2].toLowerCase() as 'credit' | 'debit',
           account: matches[3],
-          date: matches[4]
+          date: new Date(matches[4].split('/').reverse().join('-')).toISOString()
         })
       },
       // ICICI Bank
@@ -103,7 +154,7 @@ export function useSMS() {
           amount: parseFloat(matches[1].replace(/,/g, '')),
           type: matches[2].toLowerCase() as 'credit' | 'debit',
           account: matches[3],
-          date: matches[4]
+          date: new Date(matches[4].split('/').reverse().join('-')).toISOString()
         })
       },
       // Axis Bank
@@ -114,29 +165,43 @@ export function useSMS() {
           amount: parseFloat(matches[1].replace(/,/g, '')),
           type: matches[2].toLowerCase() as 'credit' | 'debit',
           account: matches[3],
-          date: matches[4]
+          date: new Date(matches[4].split('/').reverse().join('-')).toISOString()
         })
       }
     ];
 
-    for (const pattern of patterns) {
-      const matches = smsText.match(pattern.pattern);
-      if (matches) {
-        const extracted = pattern.extract(matches);
-        return {
-          id: '',
-          user_id: user?.id || '',
-          bank_name: pattern.bank,
-          account_number: extracted.account,
-          transaction_type: extracted.type,
-          amount: extracted.amount,
-          balance: 0, // Will be updated if available in SMS
-          transaction_date: extracted.date,
-          reference_number: '',
-          description: '',
-          sms_text: smsText,
-          created_at: new Date().toISOString()
-        };
+    for (const p of patterns) {
+      const match = smsText.match(p.pattern);
+      if (match) {
+        const extracted = p.extract(match);
+        
+        // Handle different pattern types
+        if (p.bank === 'Saraswat Bank') {
+          const saraswatExtracted = extracted as any; // Type assertion for Saraswat Bank specific fields
+          return {
+            bank_name: p.bank,
+            account_number: saraswatExtracted.account,
+            transaction_type: saraswatExtracted.type,
+            amount: saraswatExtracted.amount,
+            balance: saraswatExtracted.balance,
+            transaction_date: saraswatExtracted.date,
+            reference_number: saraswatExtracted.refNumber,
+            description: `UPI Transaction to ${saraswatExtracted.vpa}`,
+            sms_text: smsText,
+          };
+        } else {
+          return {
+            bank_name: p.bank,
+            account_number: extracted.account,
+            transaction_type: extracted.type,
+            amount: extracted.amount,
+            balance: 0, // Placeholder, as it's not consistently available
+            transaction_date: extracted.date,
+            reference_number: '', // Placeholder
+            description: smsText.substring(0, 100), // Truncate for description
+            sms_text: smsText,
+          };
+        }
       }
     }
 
@@ -144,40 +209,59 @@ export function useSMS() {
   };
 
   const readAndParseSMS = async () => {
-    if (!hasPermission || !user) return 0;
+    if (!hasPermission || !user || !isNativePlatform || !SmsReader) return 0;
 
     try {
       setIsLoading(true);
       
-      // For web development, we'll simulate SMS reading
-      // In a real mobile app, this would use the actual SMS plugin
-      const mockSMS = [
-        "Rs.5000.00 credited to A/c XX1234 on 15/12/2023. UPI Ref: 123456789",
-        "Rs.1000.00 debited from A/c XX5678 on 16/12/2023. Available Bal: Rs.25000.00",
-        "Rs.2500.00 credited to A/c XX9012 on 17/12/2023. UPI Ref: 987654321"
-      ];
+      const { messages } = await SmsReader.getMessages({
+        // Filter by bank sender IDs. The 'address' field in the plugin corresponds to the sender.
+        addressRegex: `(${BANK_SENDER_IDS.join('|')})`,
+        maxCount: 100, // Limit to the last 100 messages to avoid performance issues
+      });
 
-      const parsedTransactions: BankTransaction[] = [];
+      if (!messages || messages.length === 0) {
+        return 0;
+      }
 
-      for (const sms of mockSMS) {
-        const parsed = parseBankSMS(sms);
+      const parsedTransactions: Omit<BankTransaction, 'id' | 'created_at'>[] = [];
+
+      for (const sms of messages) {
+        const parsed = parseBankSMS(sms.body);
         if (parsed) {
-          parsedTransactions.push(parsed);
+          parsedTransactions.push({ ...parsed, user_id: user.id });
         }
       }
 
-      // Save to Supabase
-      if (parsedTransactions.length > 0) {
+      // Avoid inserting duplicate transactions
+      const { data: existingTransactions, error: existingError } = await supabase
+        .from('bank_transactions')
+        .select('sms_text')
+        .in('sms_text', parsedTransactions.map(t => t.sms_text));
+
+      if (existingError) {
+        console.error('Error fetching existing transactions:', existingError);
+        return 0;
+      }
+
+      const existingSmsTexts = new Set(existingTransactions.map(t => t.sms_text));
+      const newTransactions = parsedTransactions.filter(t => !existingSmsTexts.has(t.sms_text));
+
+
+      if (newTransactions.length > 0) {
         const { error } = await supabase
           .from('bank_transactions')
-          .insert(parsedTransactions);
+          .insert(newTransactions);
 
-        if (!error) {
+        if (error) {
+          console.error('Error saving new transactions:', error);
+        } else {
           await fetchBankTransactions();
         }
+        return newTransactions.length;
       }
 
-      return parsedTransactions.length;
+      return 0;
     } catch (error) {
       console.error('SMS reading error:', error);
       return 0;
@@ -199,9 +283,11 @@ export function useSMS() {
     hasPermission,
     isLoading,
     transactions,
-    isMobile,
+    isMobile: isNativePlatform, // Use isNativePlatform instead of isMobile
     requestSMSPermission,
     syncTransactions,
-    fetchBankTransactions
+    fetchBankTransactions,
+    // Test function for development
+    testParseSMS: (smsText: string) => parseBankSMS(smsText)
   };
 } 

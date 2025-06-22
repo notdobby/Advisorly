@@ -9,8 +9,11 @@ const config: CapacitorConfig = {
     url: 'https://advisorly-nine.vercel.app'
   },
   plugins: {
-    SMS: {
-      permissions: ['READ_SMS', 'RECEIVE_SMS']
+    SMS: {},
+    GoogleAuth: {
+      scopes: ['profile', 'email'],
+      serverClientId: '53612257186-qe67jr2atf8c4ngkitm7bkr2536j6p3i.apps.googleusercontent.com',
+      forceCodeForRefreshToken: true
     },
     SplashScreen: {
       launchShowDuration: 2000,

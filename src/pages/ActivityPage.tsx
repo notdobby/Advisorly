@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCwIcon, SmartphoneIcon, WalletIcon, FilterIcon } from 'lucide-react';
+import { RefreshCw, Smartphone, Wallet, Filter, ArrowUpRight, ArrowDownLeft, AlertCircle } from 'lucide-react';
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { useSMS } from '../hooks/useSMS';
 import { usePWA } from '../hooks/usePWA';
@@ -32,11 +32,20 @@ interface BankTransaction {
 
 const ActivityPage = () => {
   const { user } = useSupabaseAuth();
-  const { hasPermission, isLoading, transactions: bankTransactions, isMobile, syncTransactions } = useSMS();
+  const { 
+    transactions: bankTransactions, 
+    isLoading, 
+    syncTransactions, 
+    fetchBankTransactions, 
+    isMobile,
+    testParseSMS 
+  } = useSMS();
   const { canInstall, installApp } = usePWA();
   const [manualTransactions, setManualTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<'all' | 'manual' | 'bank'>('all');
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [testSMS, setTestSMS] = useState(`Your a/c no. XX2037 is debited for Rs.32.00 on 21-06-2025 13:27:26 and credited to vpa q164592387@ybl (UPI Ref no 106817245599) Your Current Balance is INR 465.88. If not you, give a missed call on 7666339922 - Saraswat Bank`);
+  const [parsedResult, setParsedResult] = useState<any>(null);
 
   const fetchManualTransactions = useCallback(async () => {
     if (!user) return;
@@ -90,7 +99,13 @@ const ActivityPage = () => {
   const getFilteredTransactions = () => {
     const allTransactions = [
       ...manualTransactions.map(t => ({ ...t, source: 'manual' as const })),
-      ...bankTransactions.map(t => ({ ...t, source: 'bank' as const }))
+      ...bankTransactions.map(t => ({ 
+        ...t, 
+        source: 'bank' as const,
+        date: t.transaction_date, // Map transaction_date to date for consistency
+        category: t.bank_name,
+        notes: t.description
+      }))
     ];
 
     switch (filter) {
@@ -103,7 +118,12 @@ const ActivityPage = () => {
     }
   };
 
-  const transactions = getFilteredTransactions();
+  const allTransactions = getFilteredTransactions();
+
+  const handleTestParse = () => {
+    const result = testParseSMS(testSMS);
+    setParsedResult(result);
+  };
 
   return (
     <div className="min-h-full bg-white text-black dark:bg-[#0D1117] dark:text-white p-4 md:p-8">
@@ -127,15 +147,13 @@ const ActivityPage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center">
-                <SmartphoneIcon size={20} className="text-blue-400" />
+                <Smartphone size={20} className="text-blue-400" />
               </div>
               <div>
                 <h3 className="font-semibold text-lg">Bank Transaction Sync</h3>
                 <p className="text-sm text-gray-400">
                   {isMobile 
-                    ? hasPermission 
-                      ? 'SMS permissions granted. Sync to capture bank transactions.'
-                      : 'Grant SMS permissions to automatically capture bank transactions.'
+                    ? 'SMS permissions granted. Sync to capture bank transactions.'
                     : 'Install the app on your mobile device to enable SMS sync.'
                   }
                 </p>
@@ -151,7 +169,7 @@ const ActivityPage = () => {
               disabled={!isMobile || isLoading}
               className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
             >
-              <RefreshCwIcon size={16} className={isLoading ? 'animate-spin' : ''} />
+              <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
               {isLoading ? 'Syncing...' : 'Sync Now'}
             </button>
           </div>
@@ -160,7 +178,7 @@ const ActivityPage = () => {
         {/* Filter Section */}
         <div className="flex items-center gap-4 mb-6">
           <div className="flex items-center gap-2">
-            <FilterIcon size={16} className="text-gray-400" />
+            <Filter size={16} className="text-gray-400" />
             <span className="text-sm text-gray-400">Filter:</span>
           </div>
           <div className="flex gap-2">
@@ -200,10 +218,10 @@ const ActivityPage = () => {
 
       {/* Transactions List */}
       <div className="space-y-4">
-        {transactions.length === 0 ? (
+        {allTransactions.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center mx-auto mb-4">
-              <WalletIcon size={24} className="text-gray-400" />
+              <Wallet size={24} className="text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold mb-2">No transactions yet</h3>
             <p className="text-gray-400">
@@ -216,7 +234,7 @@ const ActivityPage = () => {
             </p>
           </div>
         ) : (
-          transactions.map((transaction) => (
+          allTransactions.map((transaction) => (
             <div
               key={transaction.id}
               className="bg-[#161B22] rounded-xl p-4 border border-gray-800"
@@ -229,9 +247,9 @@ const ActivityPage = () => {
                       : 'bg-indigo-900/30'
                   }`}>
                     {transaction.source === 'bank' ? (
-                      <SmartphoneIcon size={16} className="text-blue-400" />
+                      <Smartphone size={16} className="text-blue-400" />
                     ) : (
-                      <WalletIcon size={16} className="text-indigo-400" />
+                      <Wallet size={16} className="text-indigo-400" />
                     )}
                   </div>
                   <div>
@@ -286,6 +304,29 @@ const ActivityPage = () => {
               </div>
             </div>
           ))
+        )}
+      </div>
+
+      {/* Test Parse SMS Section */}
+      <div className="mt-8 bg-[#161B22] rounded-xl p-6 border border-gray-800">
+        <h2 className="text-2xl font-bold mb-4">Test Parse SMS</h2>
+        <textarea
+          value={testSMS}
+          onChange={(e) => setTestSMS(e.target.value)}
+          className="w-full h-24 p-2 bg-gray-800 text-white rounded-lg mb-4"
+          placeholder="Enter Saraswat Bank SMS"
+        />
+        <button
+          onClick={handleTestParse}
+          className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-semibold"
+        >
+          Parse SMS
+        </button>
+        {parsedResult && (
+          <div className="mt-4 p-4 bg-gray-800 rounded-lg">
+            <h3 className="text-xl font-semibold mb-2">Parsed Result</h3>
+            <pre className="text-sm text-gray-400">{JSON.stringify(parsedResult, null, 2)}</pre>
+          </div>
         )}
       </div>
     </div>
