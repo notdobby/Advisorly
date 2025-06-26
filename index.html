@@ -15,73 +15,9 @@
     <meta name="msapplication-TileColor" content="#6366F1" />
     <meta name="msapplication-tap-highlight" content="no" />
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- Removed manifest and Apple touch icons for Capacitor-only build -->
     
-    <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" href="/icon-192x192.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/icon-192x192.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icon-512x512.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/icon-192x192.png" />
-    
-    <!-- Service Worker Registration -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          const isProduction = window.location.hostname.includes('vercel.app');
-          const isLocalhost = window.location.hostname === 'localhost' && 
-                             window.location.port === '3000';
-          
-          console.log('Environment check:', {
-            hostname: window.location.hostname,
-            port: window.location.port,
-            isProduction,
-            isLocalhost
-          });
-          
-          // Only register service worker in production
-          if (isProduction && !isLocalhost) {
-            console.log('Registering service worker in production...');
-            navigator.serviceWorker.register('/sw.js')
-              .then((registration) => {
-                console.log('SW registered successfully:', registration);
-                
-                // Check for updates
-                registration.addEventListener('updatefound', () => {
-                  const newWorker = registration.installing;
-                  if (newWorker) {
-                    newWorker.addEventListener('statechange', () => {
-                      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        console.log('New service worker available, reloading...');
-                        window.location.reload();
-                      }
-                    });
-                  }
-                });
-              })
-              .catch((registrationError) => {
-                console.error('SW registration failed:', registrationError);
-              });
-          } else {
-            console.log('Skipping service worker registration:', {
-              reason: isLocalhost ? 'development environment' : 'not production domain'
-            });
-            
-            // Unregister any existing service workers in development
-            if (isLocalhost) {
-              navigator.serviceWorker.getRegistrations().then(registrations => {
-                registrations.forEach(registration => {
-                  registration.unregister();
-                  console.log('Unregistered service worker in development');
-                });
-              });
-            }
-          }
-        });
-      } else {
-        console.log('Service Worker not supported');
-      }
-    </script>
+    <!-- Removed service worker registration script for Capacitor-only build -->
   </head>
   <body>
     <div id="root"></div>
