@@ -68,14 +68,8 @@ export function useSMS() {
     setError(null);
     
     try {
-      const response = await fetch('https://sms-parsing-906i.onrender.com/transactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          apiKey: apiKey
-        })
+      const response = await fetch(`https://sms-parsing-906i.onrender.com/transactions?apiKey=${encodeURIComponent(apiKey)}`, {
+        method: 'GET',
       });
 
       if (!response.ok) {
