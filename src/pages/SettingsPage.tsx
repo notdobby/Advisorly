@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { SettingsIcon, GlobeIcon, BellIcon, CalendarIcon, RefreshCwIcon, ShieldIcon, EyeIcon, EyeOffIcon, CheckIcon, KeyIcon, LockIcon, UnlockIcon } from 'lucide-react';
+import { SettingsIcon, GlobeIcon, BellIcon, CalendarIcon, RefreshCwIcon, ShieldIcon, EyeIcon, EyeOffIcon, CheckIcon, KeyIcon, LockIcon, UnlockIcon, DatabaseIcon } from 'lucide-react';
 import { supabase } from '../../frontend/supabaseClient';
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { useSMS } from '../hooks/useSMS';
 
 const SettingsPage = () => {
   const { user } = useSupabaseAuth();
-  const { hasPermission, isMobile, requestSMSPermission, syncTransactions, isLoading } = useSMS();
+  const { hasPermission, isMobile, requestSMSPermission, syncTransactions, isLoading, apiKey, saveApiKey } = useSMS();
   const [notifications, setNotifications] = useState({
     spending: true,
     suggestions: true,
@@ -18,6 +18,14 @@ const SettingsPage = () => {
   const [showPin, setShowPin] = useState(false);
   const [pin, setPin] = useState('1234');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState(apiKey);
+
+  // Update tempApiKey when apiKey changes
+  useEffect(() => {
+    setTempApiKey(apiKey);
+  }, [apiKey]);
+
   const handleToggle = (setting: keyof typeof notifications) => {
     setNotifications(prev => ({
       ...prev,
@@ -60,6 +68,19 @@ const SettingsPage = () => {
     if (user) {
       await supabase.from('users').update({ theme: newTheme }).eq('id', user.id);
     }
+  };
+  const handleApiKeySave = () => {
+    if (tempApiKey.trim()) {
+      saveApiKey(tempApiKey.trim());
+      alert('API key saved successfully!');
+    } else {
+      alert('Please enter a valid API key');
+    }
+  };
+  const handleApiKeyClear = () => {
+    setTempApiKey('');
+    saveApiKey('');
+    alert('API key cleared');
   };
   return <div className="min-h-full bg-white text-black dark:bg-[#0D1117] dark:text-white p-4 md:p-8">
       <header className="mb-8">
@@ -243,6 +264,61 @@ const SettingsPage = () => {
                 <p className="text-xs text-gray-400">
                   <strong>Note:</strong> SMS tracking is only available on mobile devices. 
                   Install the app on your phone to automatically capture bank transactions from SMS messages.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* API Key Management */}
+          <div className="bg-[#161B22] rounded-xl p-6 border border-gray-800">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-full bg-green-900/30 flex items-center justify-center">
+                <DatabaseIcon size={16} className="text-green-400" />
+              </div>
+              <h3 className="font-medium">Bank API Configuration</h3>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  API Key
+                </label>
+                <div className="relative">
+                  <input 
+                    type={showApiKey ? 'text' : 'password'} 
+                    value={tempApiKey} 
+                    onChange={(e) => setTempApiKey(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent pr-10" 
+                    placeholder="Enter your bank API key"
+                  />
+                  <button 
+                    onClick={() => setShowApiKey(!showApiKey)} 
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white"
+                  >
+                    {showApiKey ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Your API key is stored locally and never shared
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleApiKeySave}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+                >
+                  Save API Key
+                </button>
+                <button
+                  onClick={handleApiKeyClear}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-semibold"
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="p-3 bg-blue-900/20 border border-blue-800/30 rounded-lg">
+                <p className="text-xs text-blue-300">
+                  <strong>How it works:</strong> Enter your API key to fetch real bank transactions from your SMS parsing service. 
+                  The app will automatically sync your transaction history.
                 </p>
               </div>
             </div>

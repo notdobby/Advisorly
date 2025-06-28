@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Smartphone, Wallet, Filter } from 'lucide-react';
+import { RefreshCw, Smartphone, Wallet, Filter, Database, AlertCircle } from 'lucide-react';
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { useSMS } from '../hooks/useSMS';
 import { usePWA } from '../hooks/usePWA';
@@ -16,18 +16,15 @@ interface Transaction {
 }
 
 interface BankTransaction {
-  id: string;
-  user_id: string;
-  bank_name: string;
-  account_number: string;
-  transaction_type: 'credit' | 'debit';
+  id: number;
   amount: number;
-  balance: number;
-  transaction_date: string;
-  reference_number: string;
-  description: string;
-  sms_text: string;
-  created_at: string;
+  currency: string;
+  date: string;
+  vpa: string;
+  reference: string;
+  type: 'credit' | 'debit';
+  category: string;
+  status: string;
 }
 
 const ActivityPage = () => {
@@ -37,7 +34,9 @@ const ActivityPage = () => {
     isLoading, 
     syncTransactions, 
     isMobile,
-    testParseSMS 
+    testParseSMS,
+    apiKey,
+    error: apiError
   } = useSMS();
   const { canInstall, installApp } = usePWA();
   const [manualTransactions, setManualTransactions] = useState<Transaction[]>([]);
@@ -71,6 +70,11 @@ const ActivityPage = () => {
   }, [user, fetchManualTransactions]);
 
   const handleSync = async () => {
+    if (!apiKey) {
+      alert('Please configure your API key in Settings first');
+      return;
+    }
+    
     const count = await syncTransactions();
     if (count > 0) {
       setLastSync(new Date());
@@ -101,9 +105,12 @@ const ActivityPage = () => {
       ...bankTransactions.map(t => ({ 
         ...t, 
         source: 'bank' as const,
-        date: t.transaction_date, // Map transaction_date to date for consistency
-        category: t.bank_name,
-        notes: t.description
+        // Map the new API format to the expected format
+        date: t.date,
+        category: t.category,
+        notes: `VPA: ${t.vpa} | Ref: ${t.reference}`,
+        amount: t.amount,
+        transaction_type: t.type
       }))
     ];
 
@@ -141,19 +148,34 @@ const ActivityPage = () => {
           </div>
         </div>
         
-        {/* SMS Sync Section */}
+        {/* API Status Section */}
+        {!apiKey && (
+          <div className="bg-yellow-900/20 border border-yellow-800/30 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle size={20} className="text-yellow-400" />
+              <div>
+                <h3 className="font-semibold text-yellow-300">API Key Required</h3>
+                <p className="text-sm text-yellow-200">
+                  Configure your bank API key in Settings to fetch real transactions
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bank Transaction Sync Section */}
         <div className="bg-[#161B22] rounded-xl p-6 border border-gray-800 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center">
-                <Smartphone size={20} className="text-blue-400" />
+                <Database size={20} className="text-blue-400" />
               </div>
               <div>
                 <h3 className="font-semibold text-lg">Bank Transaction Sync</h3>
                 <p className="text-sm text-gray-400">
-                  {isMobile 
-                    ? 'SMS permissions granted. Sync to capture bank transactions.'
-                    : 'Install the app on your mobile device to enable SMS sync.'
+                  {apiKey 
+                    ? 'API key configured. Sync to fetch latest bank transactions.'
+                    : 'Configure API key in Settings to enable bank transaction sync.'
                   }
                 </p>
                 {lastSync && (
@@ -161,11 +183,16 @@ const ActivityPage = () => {
                     Last synced: {lastSync.toLocaleString()}
                   </p>
                 )}
+                {apiError && (
+                  <p className="text-xs text-red-400 mt-1">
+                    Error: {apiError}
+                  </p>
+                )}
               </div>
             </div>
             <button
               onClick={handleSync}
-              disabled={!isMobile || isLoading}
+              disabled={!apiKey || isLoading}
               className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
             >
               <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
@@ -225,17 +252,17 @@ const ActivityPage = () => {
             <h3 className="text-lg font-semibold mb-2">No transactions yet</h3>
             <p className="text-gray-400">
               {filter === 'all' 
-                ? 'Start by adding manual transactions or syncing bank SMS.'
+                ? 'Start by adding manual transactions or syncing bank transactions.'
                 : filter === 'manual'
                 ? 'Add your first manual transaction from the Wallets page.'
-                : 'Sync your bank SMS to see automatic transactions.'
+                : 'Sync your bank transactions to see automatic transactions.'
               }
             </p>
           </div>
         ) : (
           allTransactions.map((transaction) => (
             <div
-              key={transaction.id}
+              key={`${transaction.source}-${transaction.id}`}
               className="bg-[#161B22] rounded-xl p-4 border border-gray-800"
             >
               <div className="flex items-center justify-between">
@@ -246,7 +273,7 @@ const ActivityPage = () => {
                       : 'bg-indigo-900/30'
                   }`}>
                     {transaction.source === 'bank' ? (
-                      <Smartphone size={16} className="text-blue-400" />
+                      <Database size={16} className="text-blue-400" />
                     ) : (
                       <Wallet size={16} className="text-indigo-400" />
                     )}
@@ -255,7 +282,7 @@ const ActivityPage = () => {
                     <div className="flex items-center gap-2">
                       <h4 className="font-semibold">
                         {transaction.source === 'bank' 
-                          ? (transaction as BankTransaction).bank_name
+                          ? (transaction as any).category || 'Bank Transfer'
                           : (transaction as Transaction).category
                         }
                       </h4>
@@ -269,34 +296,31 @@ const ActivityPage = () => {
                     </div>
                     <p className="text-sm text-gray-400">
                       {transaction.source === 'bank' 
-                        ? `A/c: ${(transaction as BankTransaction).account_number}`
+                        ? (transaction as any).notes || 'No description'
                         : (transaction as Transaction).notes || 'No description'
                       }
                     </p>
                     <p className="text-xs text-gray-500">
-                      {formatDate(transaction.source === 'bank' 
-                        ? (transaction as BankTransaction).transaction_date
-                        : (transaction as Transaction).date
-                      )}
+                      {formatDate(transaction.date)}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className={`font-bold text-lg ${
                     transaction.source === 'bank'
-                      ? (transaction as BankTransaction).transaction_type === 'credit'
+                      ? (transaction as any).transaction_type === 'credit'
                         ? 'text-green-400'
                         : 'text-red-400'
                       : 'text-white'
                   }`}>
                     {transaction.source === 'bank'
-                      ? `${(transaction as BankTransaction).transaction_type === 'credit' ? '+' : '-'}${formatAmount(transaction.amount)}`
+                      ? `${(transaction as any).transaction_type === 'credit' ? '+' : '-'}${formatAmount(transaction.amount)}`
                       : formatAmount(transaction.amount)
                     }
                   </div>
-                  {transaction.source === 'bank' && (transaction as BankTransaction).balance > 0 && (
+                  {transaction.source === 'bank' && (
                     <p className="text-xs text-gray-400">
-                      Bal: {formatAmount((transaction as BankTransaction).balance)}
+                      {(transaction as BankTransaction).currency}
                     </p>
                   )}
                 </div>
