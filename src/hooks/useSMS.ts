@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../frontend/supabaseClient';
 
 interface BankTransaction {
   id: number;
@@ -118,7 +117,7 @@ export function useSMS() {
     }
   }, [isMobile]);
 
-  const testParseSMS = useCallback((smsText: string) => {
+  const testParseSMS = useCallback((_smsText: string) => {
     // Mock SMS parsing for testing
     const mockTransaction = {
       id: Date.now(),
